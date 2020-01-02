@@ -1,15 +1,28 @@
 ---
 apiVersion: v1
 kind: ConfigMap
+metadata:
+  name: sort-config
 data:
-  # This configures which folder a torrent's data gets moved to when complete,
-  # based on the tracker hostname.
-  # Values are in the format of ['folder_name', priority]
-  # If a torrent has multiple trackers, the one with the lowest
-  # priority will be used. Edit the values to fit your needs
+  # Completed torrents will get moved to /downloads/<folder> based on their tracker.
+  # If a torrent matches multiple trackers, then <priority> determines which location to use.
+  # Higher priority numbers get used first. Edit values to fit your needs.
   sort-config.yaml: |
-    torrent.ubuntu.com: ['ubuntu_downloads', 30]
-    torrent.fedoraproject.org: ['fedora_downloads', 70]
+    plex_tv_library_id: 1
+    plex_movie_library_id: 2
+    plex_token: null
+    plex_hostname: plex
+    trackers:
+      default:
+        priority: 0
+        folder: completed
+      ubuntu.com:
+        priority: 30
+        folder: ubuntu
+      raspberrypi.org:
+        priority: 70
+        folder: raspberrypi
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,10 +42,22 @@ spec:
         - name: external-hdd
           hostPath:
             path: /media/hdd1
+            type: File
+        - name: sort-config
+          configMap:
+            name: sort-config
+            items:
+              - key: sort-config.yaml
+                path: sort-config.yaml
       containers:
         - name: rutorrent
-          image: linuxserver/rutorrent
+          image: pastudan/rutorrent:aa71c24
           imagePullPolicy: Always
+          volumeMounts:
+            - name: external-hdd
+              mountPath: /downloads
+            - name: sort-config
+              mountPath: /etc/config
           resources:
             requests:
               cpu: 500m
@@ -47,9 +72,6 @@ spec:
               name: bittorrent
             - containerPort: 80
               name: rutorrent-ui
-          volumeMounts:
-            - name: external-hdd
-              mountPath: /downloads
 
 ---
 apiVersion: v1

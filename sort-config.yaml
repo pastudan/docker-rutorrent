@@ -2,7 +2,7 @@ plex_tv_library_id: 1
 plex_movie_library_id: 2
 plex_token: null
 plex_hostname: plex
-# Completed torrents will get moved to <base_location>/<folder> based on their tracker.
+# Completed torrents will get moved to /downloads/<folder> based on their tracker.
 # If a torrent matches multiple trackers, then <priority> determines which location to use.
 # Higher priority numbers get used first.
 trackers:
