@@ -1,3 +1,4 @@
+# === RTORRENT + RUTORRENT ===
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -22,7 +23,6 @@ data:
       raspberrypi.org:
         priority: 70
         folder: raspberrypi
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -42,7 +42,11 @@ spec:
         - name: external-hdd
           hostPath:
             path: /media/hdd1
-            type: File
+            type: Directory
+        - name: rtorrent
+          hostPath:
+            path: /var/lib/rtorrent
+            type: DirectoryOrCreate
         - name: sort-config
           configMap:
             name: sort-config
@@ -56,15 +60,10 @@ spec:
           volumeMounts:
             - name: external-hdd
               mountPath: /downloads
+            - name: rtorrent
+              mountPath: /config/rtorrent/rtorrent_sess
             - name: sort-config
               mountPath: /etc/config
-          resources:
-            requests:
-              cpu: 500m
-              memory: 256Mi
-            limits:
-              cpu: 1
-              memory: 512Mi
           ports:
             - containerPort: 5000
               name: scgi
@@ -97,3 +96,63 @@ spec:
       nodePort: 30003
       protocol: TCP
       name: bittorrent
+
+# === PLEX ===
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex
+spec:
+  selector:
+    matchLabels:
+      app: plex
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: plex
+    spec:
+      volumes:
+        - name: external-hdd-tv
+          hostPath:
+            path: /media/hdd1/tv
+            type: DirectoryOrCreate
+        - name: external-hdd-movies
+          hostPath:
+            path: /media/hdd1/movies
+            type: DirectoryOrCreate
+        - name: plex-config
+          hostPath:
+            path: /var/lib/plex
+            type: DirectoryOrCreate
+      containers:
+        - name: plex
+          image: linuxserver/plex:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: external-hdd-tv
+              mountPath: /tv
+            - name: external-hdd-movies
+              mountPath: /movies
+            - name: plex-config
+              mountPath: /config
+          ports:
+            - containerPort: 32400
+              name: plex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex
+  labels:
+    app: plex
+spec:
+  type: NodePort
+  selector:
+    app: plex
+  ports:
+    - port: 32400
+      nodePort: 32400
+      protocol: TCP
+      name: plex
